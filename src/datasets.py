@@ -2,7 +2,7 @@ import fastmerl_torch
 from sampler import sample_on_merl_with_rejection, uniform_sampler
 
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 
 # TODO: avoid using _device
 _device = 'cuda' if torch.cuda.is_available() else 'cpu'

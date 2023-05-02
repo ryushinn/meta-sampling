@@ -127,3 +127,17 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# vscode
+.vscode/
+
+# Apple Mac
+**/.DS_Store
+
+# experiment files
+results/
+results*/
+scripts/exp*.sh
+
+# data
+# data/
