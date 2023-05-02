@@ -145,7 +145,7 @@ def main(config):
 
         yaml = YAML()
         with open(os.path.join(ws_path, "config.yaml"), "w") as f:
-            yaml.dump(config, f)
+            yaml.dump(vars(config), f)
 
     def make_checkpoint(counter):
         ckpt = dict()
