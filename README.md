@@ -87,6 +87,25 @@ bash script/classic.sh
 The `classic` mode only has access to limited resources (1 \~ 512 samples and 20 learning iterations) to fit models.
 In the contrary, the `overfit` mode represents the fitting process with sufficient samples and iterations.
 
+### Meta-train samplers for PCA model
+
+Thanks to linearity of PCA model, we employ Ridge Regression to analytically solve the model parameters from measurements instead of iterative SGD. Hence we can directly meta-train samples:
+
+```bash
+bash scripts/meta_sampler_PCARR.sh
+```
+
+## Rendering side
+
+To evaluate, we render BRDFs using [Mitsuba 0.6](http://mitsuba-renderer.org/index_old.html) with some plugins.
+
+- [dj_brdf](https://github.com/jdupuy/dj_brdf) renders BRDFs of `.binary` format
+- [NBRDF codebase](http://www0.cs.ucl.ac.uk/staff/A.Sztrajman/webpage/publications/nbrdf2021/nbrdf.html) contains a plugin to render pretrained NBRDFs.
+- [This plugin](src/rendering/cooktorrance.cpp) renders BRDFs of the cooktorrance equation presented in our paper.
+- The built-in [Modified Phong BRDF (phong)](https://github.com/mitsuba-renderer/mitsuba/blob/master/src/bsdfs/phong.cpp) plugin is used to render `phong` model BRDFs.
+
+We highly appreciate these existing works. Please refer to [the document](http://mitsuba-renderer.org/docs.html) for how to use custom plugins in Mitsuba.
+
 ## Citation
 
 Please consider citing as follows if you find our paper and repo useful:
