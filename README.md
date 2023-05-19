@@ -1,8 +1,4 @@
-<h1>
-  <a style="color: inherit;" href="https://ryushinn.github.io/metasampling">
-    Learning to Learn and Sample BRDFs
-  </a>
-</h1>
+# Learning to Learn and Sample BRDFs
 
 This repo provides the official code implementation and related data for our paper
 
