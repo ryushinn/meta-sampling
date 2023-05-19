@@ -20,7 +20,7 @@ meta_lr=1e-4
 n_epochs=10000
 n_disp_ep=100
 
-printf "meta-train %s model in %s epochs" $model $n_epochs
+printf "meta-train %s model in %s epochs\n" $model $n_epochs
 python $SCRIPT_PATH --data_path $DATA_PATH --exp_path $EXP_PATH --save \
     --model_path $MODEL_PATH \
     --model $model \

@@ -23,7 +23,7 @@ n_disp_ep=5
 
 for k in "${k_list[@]}"; do
     for shots in "${shots_list[@]}"; do
-        printf "meta-train %s samples in %s epochs for %s model" $shots $n_epochs $model
+        printf "meta-train %s samples in %s epochs for %s model\n" $shots $n_epochs $model
         python $SCRIPT_PATH --data_path $DATA_PATH --exp_path $EXP_PATH --save \
             --model_path $MODEL_PATH --sampler_path $SAMPLER_PATH \
             --model $model \
