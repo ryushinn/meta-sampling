@@ -157,12 +157,13 @@ def main(config):
 
     # load the pretrained meta model
     pretrained_model = torch.load(
-        os.path.join(model_path, f"pretrained_{config.model}_20x512_10000ep.pth")
+        os.path.join(model_path, f"pretrained_{config.model}_20x512_10000ep.pth"),
+        map_location=device,
     )
     model_GBML.load_state_dict(pretrained_model)
 
     # prepare sampler
-    splr = sampler.trainable_sampler_det(n_det, quasi_init=True)
+    splr = sampler.trainable_sampler_det(n_det, quasi_init=True).to(device)
     if n_det == 1:
         # 50 attempts to select the best initial positions
         best_attempt_loss = float("inf")
@@ -180,9 +181,7 @@ def main(config):
             sampler_path, f"meta_sampler_{config.model}_{n_det//2}.pth"
         )
         if os.path.exists(trained_sampler_path):
-            splr.load_samples(torch.load(trained_sampler_path))
-
-    splr.to(device)
+            splr.load_samples(torch.load(trained_sampler_path, map_location=device))
 
     sampler_optimizer = optim.Adam(splr.parameters(), sampler_lr)
     sampler_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
@@ -279,11 +278,15 @@ def main(config):
                 if config.save:
                     torch.save(
                         copy.deepcopy(splr.state_dict()),
-                        os.path.join(ws_path, f"meta_sampler_{config.model}_{n_det}.pth"),
+                        os.path.join(
+                            ws_path, f"meta_sampler_{config.model}_{n_det}.pth"
+                        ),
                     )
                     torch.save(
                         copy.deepcopy(splr.state_dict()),
-                        os.path.join(sampler_path, f"meta_sampler_{config.model}_{n_det}.pth"),
+                        os.path.join(
+                            sampler_path, f"meta_sampler_{config.model}_{n_det}.pth"
+                        ),
                     )
 
             # validate
