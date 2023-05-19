@@ -5,7 +5,8 @@ import torch
 from torch.utils.data import Dataset
 
 # TODO: avoid using _device
-_device = 'cuda' if torch.cuda.is_available() else 'cpu'
+_device = "cuda" if torch.cuda.is_available() else "cpu"
+
 
 # TODO: make it a bulk-loading dataset
 class MerlDataset(Dataset):
@@ -24,8 +25,10 @@ class MerlDataset(Dataset):
         self.num_batches = nsamples // batch_size
         assert self.num_batches > 0
 
-        rangles, rvectors, brdf_vals = sample_on_merl_with_rejection(brdf, self.sampler, nsamples)
-        
+        rangles, rvectors, brdf_vals = sample_on_merl_with_rejection(
+            brdf, self.sampler, nsamples
+        )
+
         self.rangles = rangles.to(_device)
         self.rvectors = rvectors.to(_device)
         self.brdf_vals = brdf_vals.to(_device)
@@ -34,7 +37,11 @@ class MerlDataset(Dataset):
         return self.nsamples
 
     def __getitem__(self, indices):
-        return self.rangles[indices, :], self.rvectors[indices, :], self.brdf_vals[indices, :]
+        return (
+            self.rangles[indices, :],
+            self.rvectors[indices, :],
+            self.brdf_vals[indices, :],
+        )
 
     def shuffle(self):
         p = torch.randperm(self.nsamples)
@@ -49,10 +56,15 @@ class MerlDataset(Dataset):
         left = self.cbi * self.bs
         right = left + self.bs
         self.cbi += 1
-        return self.rangles[left:right, :], self.rvectors[left:right, :], self.brdf_vals[left:right, :]
+        return (
+            self.rangles[left:right, :],
+            self.rvectors[left:right, :],
+            self.brdf_vals[left:right, :],
+        )
 
     def get_all(self):
         return self.rangles, self.rvectors, self.brdf_vals
+
 
 def custom_collate(batch):
     tasks_train = []
@@ -62,13 +74,14 @@ def custom_collate(batch):
         tasks_test.append(_task_test)
     return tasks_train, tasks_test
 
+
 class MerlTaskset(Dataset):
     def __init__(self, merlPaths, n_test_samples=512):
         merls = []
         for path in merlPaths:
             merl = fastmerl_torch.Merl(path)
             merls.append(merl)
-        
+
         test_sampler = uniform_sampler()
         task_test = []
         for merl in merls:
@@ -86,4 +99,3 @@ class MerlTaskset(Dataset):
 
     def __getitem__(self, idx):
         return self.task_train[idx], self.task_test[idx]
-

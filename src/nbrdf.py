@@ -175,7 +175,7 @@ class _PCA(torch.nn.Module):
     On optimal, minimal BRDF sampling for reflectance acquisition.
     ACM Transactions on Graphics 34, 6, 1–11.]
 
-    and their codebase https://brdf.compute.dtu.dk/#citation
+    and their codebase https://brdf.compute.dtu.dk/#navbar-code
     """
 
     def __init__(self, precomputed_path, basis_num=240):

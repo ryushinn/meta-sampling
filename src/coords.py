@@ -1,11 +1,12 @@
 import torch
 from utils import PI
 
+
 def bdot(a, b):
     """
     dot product in batch
     """
-    return torch.einsum('bi,bi->b', a, b)
+    return torch.einsum("bi,bi->b", a, b)
 
 
 def normalize(v):
@@ -24,9 +25,11 @@ def rotate_vector(v, axis, angle):
     """
     sin_vals = torch.sin(angle).reshape(-1, 1)
     cos_vals = torch.cos(angle).reshape(-1, 1)
-    return v*cos_vals + \
-        axis*bdot(axis, v).reshape(-1, 1)*(1 - cos_vals) + \
-        torch.cross(axis, v, dim=-1)*sin_vals
+    return (
+        v * cos_vals
+        + axis * bdot(axis, v).reshape(-1, 1) * (1 - cos_vals)
+        + torch.cross(axis, v, dim=-1) * sin_vals
+    )
 
 
 def io_to_hd_sph(wi, wo):
@@ -40,8 +43,7 @@ def io_to_hd_sph(wi, wo):
     ox, oy, oz = sph2xyz(1, theta_o, phi_o)
 
     half, diff = io_to_hd(
-        torch.stack([ix, iy, iz], dim=1),
-        torch.stack([ox, oy, oz], dim=1)
+        torch.stack([ix, iy, iz], dim=1), torch.stack([ox, oy, oz], dim=1)
     )
 
     hx, hy, hz = torch.unbind(half, dim=1)
@@ -70,18 +72,26 @@ def io_to_hd(wi, wo):
     # diff = rotate_vector(tmp, bi_normal, -theta_h)
 
     # 2. by matrix computation
-    row1 = torch.stack([
-        torch.cos(theta_h) * torch.cos(phi_h), torch.cos(theta_h) *
-        torch.sin(phi_h), -torch.sin(theta_h)
-    ], dim=0)
-    row2 = torch.stack([
-        -torch.sin(phi_h), torch.cos(phi_h), torch.zeros(wi.size(0),
-                                                         device=device)
-    ], dim=0)
-    row3 = torch.stack([
-        torch.sin(theta_h) * torch.cos(phi_h), torch.sin(theta_h) *
-        torch.sin(phi_h), torch.cos(theta_h)
-    ], dim=0)
+    row1 = torch.stack(
+        [
+            torch.cos(theta_h) * torch.cos(phi_h),
+            torch.cos(theta_h) * torch.sin(phi_h),
+            -torch.sin(theta_h),
+        ],
+        dim=0,
+    )
+    row2 = torch.stack(
+        [-torch.sin(phi_h), torch.cos(phi_h), torch.zeros(wi.size(0), device=device)],
+        dim=0,
+    )
+    row3 = torch.stack(
+        [
+            torch.sin(theta_h) * torch.cos(phi_h),
+            torch.sin(theta_h) * torch.sin(phi_h),
+            torch.cos(theta_h),
+        ],
+        dim=0,
+    )
     mat = torch.stack([row1, row2, row3], dim=0)
     mat.to(device)
 
@@ -101,8 +111,7 @@ def hd_to_io_sph(half, diff):
     dx, dy, dz = sph2xyz(1, theta_d, phi_d)
 
     wi, wo = hd_to_io(
-        torch.stack([hx, hy, hz], dim=1),
-        torch.stack([dx, dy, dz], dim=1)
+        torch.stack([hx, hy, hz], dim=1), torch.stack([dx, dy, dz], dim=1)
     )
 
     ix, iy, iz = torch.unbind(wi, dim=1)
@@ -129,23 +138,35 @@ def hd_to_io(half, diff):
     # wi = normalize(rotate_vector(tmp, z_axis, phi_h))
 
     # 2. by matrix computations
-    row1 = torch.stack([
-        torch.cos(phi_h) * torch.cos(theta_h), -
-        torch.sin(phi_h), torch.cos(phi_h) * torch.sin(theta_h)
-    ], dim=0)
-    row2 = torch.stack([
-        torch.sin(
-            phi_h) * torch.cos(theta_h), torch.cos(phi_h), torch.sin(phi_h) * torch.sin(theta_h)
-    ], dim=0)
-    row3 = torch.stack([
-        -torch.sin(theta_h), torch.zeros(half.size(0),
-                                         device=device), torch.cos(theta_h)
-    ], dim=0)
+    row1 = torch.stack(
+        [
+            torch.cos(phi_h) * torch.cos(theta_h),
+            -torch.sin(phi_h),
+            torch.cos(phi_h) * torch.sin(theta_h),
+        ],
+        dim=0,
+    )
+    row2 = torch.stack(
+        [
+            torch.sin(phi_h) * torch.cos(theta_h),
+            torch.cos(phi_h),
+            torch.sin(phi_h) * torch.sin(theta_h),
+        ],
+        dim=0,
+    )
+    row3 = torch.stack(
+        [
+            -torch.sin(theta_h),
+            torch.zeros(half.size(0), device=device),
+            torch.cos(theta_h),
+        ],
+        dim=0,
+    )
     mat = torch.stack([row1, row2, row3], dim=0)
     mat.to(device)
     wi = torch.einsum("ijn,nj->ni", mat, diff)
 
-    wo = normalize((2*bdot(wi, half)[..., None]*half - wi))
+    wo = normalize((2 * bdot(wi, half)[..., None] * half - wi))
 
     return wi, wo
 
@@ -166,9 +187,9 @@ def sph2xyz(r, theta, phi):
     """
     convert spherical-coordinate to xyz-coordinate
     """
-    x = r*torch.sin(theta)*torch.cos(phi)
-    y = r*torch.sin(theta)*torch.sin(phi)
-    z = r*torch.cos(theta)
+    x = r * torch.sin(theta) * torch.cos(phi)
+    y = r * torch.sin(theta) * torch.sin(phi)
+    z = r * torch.cos(theta)
     return x, y, z
 
 
@@ -198,6 +219,7 @@ def rvectors_to_rangles(hx, hy, hz, dx, dy, dz):
     phi_d = torch.arctan2(dy, dx)
     phi_d = torch.where(phi_d < 0, phi_d + 2 * PI, phi_d)
     return theta_h, theta_d, phi_d
+
 
 # def rsph_to_rvectors(half_sph, diff_sph):
 #     hx, hy, hz = sph2xyz(*half_sph)

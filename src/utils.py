@@ -30,7 +30,7 @@ _diffuse_subset_merl = [
     "red-fabric.binary",
     "red-fabric2.binary",
     "white-fabric.binary",
-    "white-fabric2.binary"
+    "white-fabric2.binary",
 ]
 # specular subset in MERL
 _specular_subset_merl = [
@@ -43,7 +43,7 @@ _specular_subset_merl = [
     "specular-violet-phenolic.binary",
     "specular-white-phenolic.binary",
     "specular-yellow-phenolic.binary",
-    "yellow-phenolic.binary"
+    "yellow-phenolic.binary",
 ]
 
 
@@ -75,7 +75,7 @@ def seed_all(seed):
     provide the seed for reproducibility
     """
     random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -100,7 +100,7 @@ def save_binary(BRDFVals, name, exp_path):
     """
 
     # Do MERL tonemapping if needed
-    BRDFVals /= (1.00/1500, 1.15/1500, 1.66/1500)
+    BRDFVals /= (1.00 / 1500, 1.15 / 1500, 1.66 / 1500)
 
     # Vectorize:
     vec = BRDFVals.T.flatten()
@@ -122,13 +122,13 @@ def save_npy(model, name, exp_path):
     """
 
     for el in model.named_parameters():
-        param_name = el[0]   # either fc1.bias or fc1.weight
+        param_name = el[0]  # either fc1.bias or fc1.weight
         weights = el[1]
-        segs = param_name.split('.')
-        if segs[-1] == 'weight':
+        segs = param_name.split(".")
+        if segs[-1] == "weight":
             param_name = segs[0]
         else:
-            param_name = segs[0].replace('fc', 'b')
+            param_name = segs[0].replace("fc", "b")
 
         filename = f"{name}_{param_name}.npy"
         filepath = os.path.join(exp_path, filename)
@@ -137,9 +137,9 @@ def save_npy(model, name, exp_path):
         np.save(filepath, curr_weight)
 
 
-def freeze(model, freezed_layer_name=''):
+def freeze(model, freezed_layer_name=""):
     """
-    do not compute gradients for some parameters 
+    do not compute gradients for some parameters
     in order to simplify the computation graph
     """
     for name, param in model.named_parameters():
@@ -147,7 +147,7 @@ def freeze(model, freezed_layer_name=''):
             param.requires_grad = False
 
 
-def unfreeze(model, freezed_layer_name=''):
+def unfreeze(model, freezed_layer_name=""):
     """
     undo freeze
     """
@@ -175,7 +175,6 @@ def grid_sample_3d(image, optical):
     iy = ((iy + 1) / 2) * (IH - 1)
     iz = ((iz + 1) / 2) * (ID - 1)
     with torch.no_grad():
-
         ix_tnw = torch.floor(ix)
         iy_tnw = torch.floor(iy)
         iz_tnw = torch.floor(iz)
@@ -218,7 +217,6 @@ def grid_sample_3d(image, optical):
     bse = (ix - ix_tnw) * (iy - iy_tnw) * (iz - iz_tnw)
 
     with torch.no_grad():
-
         torch.clamp(ix_tnw, 0, IW - 1, out=ix_tnw)
         torch.clamp(iy_tnw, 0, IH - 1, out=iy_tnw)
         torch.clamp(iz_tnw, 0, ID - 1, out=iz_tnw)
@@ -253,30 +251,80 @@ def grid_sample_3d(image, optical):
 
     image = image.view(N, C, ID * IH * IW)
 
-    tnw_val = torch.gather(image, 2, (iz_tnw * IW * IH + iy_tnw *
-                           IW + ix_tnw).long().view(N, 1, D * H * W).repeat(1, C, 1))
-    tne_val = torch.gather(image, 2, (iz_tne * IW * IH + iy_tne *
-                           IW + ix_tne).long().view(N, 1, D * H * W).repeat(1, C, 1))
-    tsw_val = torch.gather(image, 2, (iz_tsw * IW * IH + iy_tsw *
-                           IW + ix_tsw).long().view(N, 1, D * H * W).repeat(1, C, 1))
-    tse_val = torch.gather(image, 2, (iz_tse * IW * IH + iy_tse *
-                           IW + ix_tse).long().view(N, 1, D * H * W).repeat(1, C, 1))
-    bnw_val = torch.gather(image, 2, (iz_bnw * IW * IH + iy_bnw *
-                           IW + ix_bnw).long().view(N, 1, D * H * W).repeat(1, C, 1))
-    bne_val = torch.gather(image, 2, (iz_bne * IW * IH + iy_bne *
-                           IW + ix_bne).long().view(N, 1, D * H * W).repeat(1, C, 1))
-    bsw_val = torch.gather(image, 2, (iz_bsw * IW * IH + iy_bsw *
-                           IW + ix_bsw).long().view(N, 1, D * H * W).repeat(1, C, 1))
-    bse_val = torch.gather(image, 2, (iz_bse * IW * IH + iy_bse *
-                           IW + ix_bse).long().view(N, 1, D * H * W).repeat(1, C, 1))
+    tnw_val = torch.gather(
+        image,
+        2,
+        (iz_tnw * IW * IH + iy_tnw * IW + ix_tnw)
+        .long()
+        .view(N, 1, D * H * W)
+        .repeat(1, C, 1),
+    )
+    tne_val = torch.gather(
+        image,
+        2,
+        (iz_tne * IW * IH + iy_tne * IW + ix_tne)
+        .long()
+        .view(N, 1, D * H * W)
+        .repeat(1, C, 1),
+    )
+    tsw_val = torch.gather(
+        image,
+        2,
+        (iz_tsw * IW * IH + iy_tsw * IW + ix_tsw)
+        .long()
+        .view(N, 1, D * H * W)
+        .repeat(1, C, 1),
+    )
+    tse_val = torch.gather(
+        image,
+        2,
+        (iz_tse * IW * IH + iy_tse * IW + ix_tse)
+        .long()
+        .view(N, 1, D * H * W)
+        .repeat(1, C, 1),
+    )
+    bnw_val = torch.gather(
+        image,
+        2,
+        (iz_bnw * IW * IH + iy_bnw * IW + ix_bnw)
+        .long()
+        .view(N, 1, D * H * W)
+        .repeat(1, C, 1),
+    )
+    bne_val = torch.gather(
+        image,
+        2,
+        (iz_bne * IW * IH + iy_bne * IW + ix_bne)
+        .long()
+        .view(N, 1, D * H * W)
+        .repeat(1, C, 1),
+    )
+    bsw_val = torch.gather(
+        image,
+        2,
+        (iz_bsw * IW * IH + iy_bsw * IW + ix_bsw)
+        .long()
+        .view(N, 1, D * H * W)
+        .repeat(1, C, 1),
+    )
+    bse_val = torch.gather(
+        image,
+        2,
+        (iz_bse * IW * IH + iy_bse * IW + ix_bse)
+        .long()
+        .view(N, 1, D * H * W)
+        .repeat(1, C, 1),
+    )
 
-    out_val = (tnw_val.view(N, C, D, H, W) * tnw.view(N, 1, D, H, W) +
-               tne_val.view(N, C, D, H, W) * tne.view(N, 1, D, H, W) +
-               tsw_val.view(N, C, D, H, W) * tsw.view(N, 1, D, H, W) +
-               tse_val.view(N, C, D, H, W) * tse.view(N, 1, D, H, W) +
-               bnw_val.view(N, C, D, H, W) * bnw.view(N, 1, D, H, W) +
-               bne_val.view(N, C, D, H, W) * bne.view(N, 1, D, H, W) +
-               bsw_val.view(N, C, D, H, W) * bsw.view(N, 1, D, H, W) +
-               bse_val.view(N, C, D, H, W) * bse.view(N, 1, D, H, W))
+    out_val = (
+        tnw_val.view(N, C, D, H, W) * tnw.view(N, 1, D, H, W)
+        + tne_val.view(N, C, D, H, W) * tne.view(N, 1, D, H, W)
+        + tsw_val.view(N, C, D, H, W) * tsw.view(N, 1, D, H, W)
+        + tse_val.view(N, C, D, H, W) * tse.view(N, 1, D, H, W)
+        + bnw_val.view(N, C, D, H, W) * bnw.view(N, 1, D, H, W)
+        + bne_val.view(N, C, D, H, W) * bne.view(N, 1, D, H, W)
+        + bsw_val.view(N, C, D, H, W) * bsw.view(N, 1, D, H, W)
+        + bse_val.view(N, C, D, H, W) * bse.view(N, 1, D, H, W)
+    )
 
     return out_val

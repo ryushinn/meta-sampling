@@ -9,36 +9,36 @@ Re-implemented by PyTorch in order to:
 """
 
 import struct
-import math
-import numpy as np
-import pandas as pd
 import torch
 import torch.nn.functional as F
 from utils import PI
 from utils import grid_sample_3d
 from functools import partial
 
+
 class Merl:
     sampling_theta_h = 90
     sampling_theta_d = 90
     sampling_phi_d = 180
 
-    scale = torch.tensor([1./1500, 1.15/1500, 1.66/1500])
-    
-    def __init__(self, merl_file, device='cpu'):
+    scale = torch.tensor([1.0 / 1500, 1.15 / 1500, 1.66 / 1500])
+
+    def __init__(self, merl_file, device="cpu"):
         """
         Initialize and load a MERL BRDF file
 
         :param merl_file: The path of the file to load
         """
-        with open(merl_file, 'rb') as f:
+        with open(merl_file, "rb") as f:
             data = f.read()
-            n = struct.unpack_from('3i', data)
+            n = struct.unpack_from("3i", data)
             Merl.sampling_phi_d = n[2]
             length = Merl.sampling_theta_h * Merl.sampling_theta_d * Merl.sampling_phi_d
-            if  n[0]*n[1]*n[2] != length:
+            if n[0] * n[1] * n[2] != length:
                 raise IOError("Dimensions do not match")
-            brdf = struct.unpack_from(str(3*length)+'d', data, offset=struct.calcsize('3i'))
+            brdf = struct.unpack_from(
+                str(3 * length) + "d", data, offset=struct.calcsize("3i")
+            )
 
             self.brdf_tensor = torch.tensor(brdf, device=device).reshape(3, -1)
             # convert all invalid entries into 0
@@ -72,7 +72,7 @@ class Merl:
     def eval_raw(self, theta_h, theta_d, phi_d):
         """
         Lookup the BRDF value for given half diff coordinates
-        
+
         :param theta_h: half vector elevation angle in radians
         :param theta_d: diff vector elevation angle in radians
         :param phi_d: diff vector azimuthal angle in radians
@@ -83,9 +83,11 @@ class Merl:
         theta_d = Merl._filter_theta_d(torch.atleast_1d(theta_d))
         phi_d = Merl._filter_phi_d(torch.atleast_1d(phi_d))
 
-        return self._eval_idx(Merl._theta_h_idx(theta_h),
-                            Merl._theta_d_idx(theta_d),
-                            Merl._phi_d_idx(phi_d))
+        return self._eval_idx(
+            Merl._theta_h_idx(theta_h),
+            Merl._theta_d_idx(theta_d),
+            Merl._phi_d_idx(phi_d),
+        )
 
     def merl_lookup(merl_tensor, theta_h, theta_d, phi_d, scaling=True, higher=False):
         """
@@ -95,44 +97,51 @@ class Merl:
             scaling: do merl tonemapping if needed
             higher: indicate whether the higher gradients are needed, to select different implementations
         """
-        
+
         theta_h = Merl._filter_theta_h(torch.atleast_1d(theta_h))
         theta_d = Merl._filter_theta_d(torch.atleast_1d(theta_d))
         phi_d = Merl._filter_phi_d(torch.atleast_1d(phi_d))
 
         # deal with the nonliearity mapping of theta_h
-        idx_th = torch.sqrt(theta_h / (PI/2) + 1e-8) * Merl.sampling_theta_h
+        idx_th = torch.sqrt(theta_h / (PI / 2) + 1e-8) * Merl.sampling_theta_h
         th_prev = Merl._theta_h_from_idx(torch.floor(idx_th))
-        th_next = Merl._theta_h_from_idx(torch.floor(idx_th)+1)
+        th_next = Merl._theta_h_from_idx(torch.floor(idx_th) + 1)
         idx_th_prev_normalized = torch.floor(idx_th) / (Merl.sampling_theta_h - 1)
         idx_th_next_normalized = (torch.floor(idx_th) + 1) / (Merl.sampling_theta_h - 1)
-        idx_th_normalized = idx_th_prev_normalized + \
-                (theta_h - th_prev) / (th_next - th_prev) * (idx_th_next_normalized - idx_th_prev_normalized)
+        idx_th_normalized = idx_th_prev_normalized + (theta_h - th_prev) / (
+            th_next - th_prev
+        ) * (idx_th_next_normalized - idx_th_prev_normalized)
 
-        idx_td_normalized = theta_d / (PI/2) * Merl.sampling_theta_d / (Merl.sampling_theta_d - 1)
+        idx_td_normalized = (
+            theta_d / (PI / 2) * Merl.sampling_theta_d / (Merl.sampling_theta_d - 1)
+        )
         idx_pd_normalized = phi_d / PI * Merl.sampling_phi_d / (Merl.sampling_phi_d - 1)
 
-        idx = torch.stack([
-            2 * (idx_pd_normalized - 0.5),
-            2 * (idx_td_normalized - 0.5),
-            2 * (idx_th_normalized - 0.5)
-        ], dim=1)
+        idx = torch.stack(
+            [
+                2 * (idx_pd_normalized - 0.5),
+                2 * (idx_td_normalized - 0.5),
+                2 * (idx_th_normalized - 0.5),
+            ],
+            dim=1,
+        )
 
         if higher:
             interpolator = grid_sample_3d
         else:
             interpolator = partial(
-                F.grid_sample, mode='bilinear', 
-                padding_mode='reflection', align_corners=True
+                F.grid_sample,
+                mode="bilinear",
+                padding_mode="reflection",
+                align_corners=True,
             )
-            
+
         C = merl_tensor.shape[0]
         interpolated = interpolator(
-            merl_tensor.reshape( 
-                1, C, Merl.sampling_theta_h, 
-                Merl.sampling_theta_d, Merl.sampling_phi_d
-            ), 
-            idx.reshape(1, -1, 1, 1, 3)
+            merl_tensor.reshape(
+                1, C, Merl.sampling_theta_h, Merl.sampling_theta_d, Merl.sampling_phi_d
+            ),
+            idx.reshape(1, -1, 1, 1, 3),
         ).reshape(C, -1)
 
         if scaling:
@@ -140,12 +149,11 @@ class Merl:
 
         return interpolated
 
-
     def eval_interp(self, theta_h, theta_d, phi_d):
         """
         Lookup the BRDF value for given half diff coordinates and perform an
         interpolation over theta_h, theta_d and phi_d
-        
+
         :param theta_h: half vector elevation angle in radians
         :param theta_d: diff vector elevation angle in radians
         :param phi_d: diff vector azimuthal angle in radians
@@ -153,8 +161,6 @@ class Merl:
         linear RGB
         """
         return Merl.merl_lookup(self.brdf_tensor, theta_h, theta_d, phi_d)
-
- 
 
     def _eval_idx(self, ith, itd, ipd):
         """
@@ -171,7 +177,7 @@ class Merl:
         ind = ind.to(torch.long)
 
         return Merl.scale[..., None] * self.brdf_tensor[:, ind]
-    
+
     def _theta_h_from_idx(theta_h_idx):
         """
         Get the theta_h value corresponding to a given index
@@ -189,9 +195,9 @@ class Merl:
         :param theta_h: Value for theta_h in radians
         :return: The corresponding index for the given theta_h
         """
-        th = Merl.sampling_theta_h * torch.sqrt(theta_h / (PI/2))
+        th = Merl.sampling_theta_h * torch.sqrt(theta_h / (PI / 2))
 
-        return torch.clip(torch.floor(th), 0, Merl.sampling_theta_h-1)
+        return torch.clip(torch.floor(th), 0, Merl.sampling_theta_h - 1)
 
     def _theta_d_from_idx(theta_d_idx):
         """
@@ -209,8 +215,8 @@ class Merl:
         :param theta_d: Value for theta_d in radians
         :return: The corresponding index for the given theta_d
         """
-        td = Merl.sampling_theta_d * theta_d / (PI/2)
-        return torch.clip(torch.floor(td), 0, Merl.sampling_theta_d-1)
+        td = Merl.sampling_theta_d * theta_d / (PI / 2)
+        return torch.clip(torch.floor(td), 0, Merl.sampling_theta_d - 1)
 
     def _phi_d_from_idx(phi_d_idx):
         """
@@ -222,7 +228,6 @@ class Merl:
 
         return phi_d_idx / Merl.sampling_phi_d * PI
 
-
     def _phi_d_idx(phi_d):
         """
         Get the index corresponding to a given phi_d value
@@ -231,7 +236,7 @@ class Merl:
         :return: The corresponding index for the given phi_d
         """
         pd = Merl.sampling_phi_d * phi_d / PI
-        return torch.clip(torch.floor(pd), 0, Merl.sampling_phi_d-1)
+        return torch.clip(torch.floor(pd), 0, Merl.sampling_phi_d - 1)
 
     def to_(self, device):
         self.brdf_tensor = self.brdf_tensor.to(device)

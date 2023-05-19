@@ -11,6 +11,7 @@ import utils
 from sampler import sample_on_merl, uniform_sampler_preloaded
 from ruamel.yaml import YAML
 
+
 def main(config):
     # general setup
     # ----------
@@ -102,7 +103,7 @@ def main(config):
 
         # save config
         yaml = YAML()
-        with open(os.path.join(ws_path, 'config.yaml'), 'w') as f:
+        with open(os.path.join(ws_path, "config.yaml"), "w") as f:
             yaml.dump(vars(config), f)
 
         # save train losses
